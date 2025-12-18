@@ -1,6 +1,6 @@
 /**
  * NutriAI System Core Logic
- * Pure Frontend SPA
+ * Modified: Auto-generate VLM result without image upload
  */
 
 const app = {
@@ -17,7 +17,7 @@ const app = {
             app.loadFromStorage();
             app.setupRouter();
             app.setupEventListeners();
-            app.setupDragAndDrop(); // 新增拖拉功能
+            app.setupDragAndDrop();
             app.updateUI();
             app.renderDate();
             console.log("NutriAI System Initialized");
@@ -27,7 +27,7 @@ const app = {
         }
     },
 
-    // --- Data & Seeding (Req 4) ---
+    // --- Data & Seeding ---
     seedDemoData: () => {
         console.log("Seeding Demo Data...");
         const today = new Date();
@@ -39,12 +39,9 @@ const app = {
             d.setDate(d.getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
             
-            // 每天塞 1-3 筆
-            const meals = ["早餐", "午餐", "晚餐"];
             const foods = Object.keys(MOCK_FOOD_DB).slice(0, 10);
             
             for(let j=0; j<3; j++) {
-                // 隨機跳過一些餐
                 if(Math.random() > 0.8) continue;
                 
                 const foodName = foods[Math.floor(Math.random() * foods.length)];
@@ -57,7 +54,7 @@ const app = {
                     mealType: ["breakfast", "lunch", "dinner"][j],
                     name: foodName,
                     portion: 100,
-                    nutrients: { ...item }, // Copy values
+                    nutrients: { ...item },
                     ingredients: item.ingredients
                 });
             }
@@ -83,7 +80,6 @@ const app = {
             const currentDay = new Date().toISOString().split('T')[0];
             if(app.state.today !== currentDay) app.state.today = currentDay;
         } else {
-            // Req 4: 首次開啟自動載入 Demo 資料
             app.seedDemoData();
         }
     },
@@ -96,18 +92,14 @@ const app = {
         }
     },
 
-    // --- Router & UI (Req 1 & 5) ---
+    // --- Router & UI ---
     setupRouter: () => {
         const navBtns = document.querySelectorAll('.nav-btn');
         navBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Remove active class from all buttons
                 navBtns.forEach(b => b.classList.remove('active'));
-                
-                // Add active to clicked button (handle child clicks)
                 const targetBtn = e.currentTarget;
                 targetBtn.classList.add('active');
-                
                 const viewId = targetBtn.dataset.target;
                 app.switchView(viewId);
             });
@@ -115,25 +107,20 @@ const app = {
     },
 
     switchView: (viewId) => {
-        // Hide all views first
         document.querySelectorAll('.view').forEach(el => {
             el.classList.remove('active');
-            el.style.display = 'none'; // Ensure strictly hidden via inline style for safety
+            el.style.display = 'none';
         });
         
         const targetView = document.getElementById(`view-${viewId}`);
         if (!targetView) {
-            app.showToast(`頁面 ${viewId} 不存在`, "error");
-            app.switchView('dashboard'); // Fallback
+            app.switchView('dashboard');
             return;
         }
 
-        // Show target view
         targetView.style.display = 'block';
-        // Small delay to allow display:block to apply before adding opacity class (for transition)
         setTimeout(() => targetView.classList.add('active'), 10);
 
-        // Update Page Title
         const titles = {
             'dashboard': '今日概覽',
             'food-log': '飲食紀錄',
@@ -145,7 +132,6 @@ const app = {
         };
         document.getElementById('pageTitle').innerText = titles[viewId] || 'NutriAI';
 
-        // Trigger Render Logic
         try {
             if (viewId === 'dashboard') app.renderDashboard();
             if (viewId === 'analysis') app.renderReport();
@@ -154,27 +140,23 @@ const app = {
             if (viewId === 'medication') app.renderMedicationList();
             if (viewId === 'profile') app.renderProfile();
         } catch (e) {
-            console.error("Render Error:", e);
-            app.showToast("頁面渲染發生錯誤", "error");
+            console.error(e);
         }
     },
 
     renderDate: () => {
         const d = new Date();
-        const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
-        document.getElementById('currentDate').innerText = dateStr;
+        document.getElementById('currentDate').innerText = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
     },
 
     showToast: (msg, type = "normal") => {
         const toast = document.getElementById('toast');
         toast.innerText = msg;
-        toast.className = `toast ${type}`; // reset classes
+        toast.className = `toast ${type}`;
         toast.classList.remove('hidden');
         toast.style.opacity = 1;
         
-        // Clear previous timeout if exists
         if(app.toastTimeout) clearTimeout(app.toastTimeout);
-        
         app.toastTimeout = setTimeout(() => {
             toast.style.opacity = 0;
             setTimeout(() => toast.classList.add('hidden'), 300);
@@ -190,7 +172,6 @@ const app = {
 
     // --- Use Case 1: Food Log & Search ---
     setupEventListeners: () => {
-        // Image Upload (Click)
         const fileInput = document.getElementById('foodImageInput');
         if(fileInput) {
             fileInput.addEventListener('change', (e) => {
@@ -198,38 +179,36 @@ const app = {
             });
         }
         
-        // Upload Area Click
         const dropZone = document.getElementById('dropZone');
         if(dropZone) {
              dropZone.addEventListener('click', () => document.getElementById('foodImageInput').click());
         }
 
         document.getElementById('reUploadBtn').addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent bubbling to dropZone
+            e.stopPropagation();
             app.resetUpload();
         });
 
+        // 這裡不需要再 enable/disable button 了
         document.getElementById('startAnalysisBtn').addEventListener('click', app.runMockVLM);
         document.getElementById('saveFoodLogBtn').addEventListener('click', app.saveFoodLog);
-        document.getElementById('manualSearchBtn').addEventListener('click', app.openSearchModal); // Fix Req 2
+        document.getElementById('manualSearchBtn').addEventListener('click', app.openSearchModal);
         document.getElementById('profileForm').addEventListener('submit', (e) => { e.preventDefault(); app.saveProfile(); });
         
         document.getElementById('resetAllBtn').addEventListener('click', () => {
-            if(confirm("確定要重置為預設 Demo 資料嗎？目前的所有紀錄將被清除。")) {
+            if(confirm("確定要重置為預設 Demo 資料嗎？")) {
                 localStorage.removeItem('nutriAI_state');
-                app.seedDemoData(); // Re-seed immediately
+                app.seedDemoData();
                 location.reload();
             }
         });
 
-        // Search Input in Modal
         const searchInput = document.getElementById('modalSearchInput');
         if(searchInput) {
             searchInput.addEventListener('input', (e) => app.renderSearchList(e.target.value));
         }
     },
 
-    // Fix Req 3: Drag and Drop
     setupDragAndDrop: () => {
         const dropZone = document.getElementById('dropZone');
         if(!dropZone) return;
@@ -266,7 +245,6 @@ const app = {
             document.getElementById('imagePreview').src = evt.target.result;
             document.getElementById('previewContainer').classList.remove('hidden');
             document.querySelector('.upload-placeholder').classList.add('hidden');
-            document.getElementById('startAnalysisBtn').disabled = false;
         };
         reader.readAsDataURL(file);
     },
@@ -276,10 +254,10 @@ const app = {
         document.getElementById('previewContainer').classList.add('hidden');
         document.querySelector('.upload-placeholder').classList.remove('hidden');
         document.getElementById('vlmResultArea').classList.add('hidden');
-        document.getElementById('startAnalysisBtn').disabled = true;
+        // 不再 disable 按鈕，保持隨時可用
     },
 
-    // --- Search Modal Logic (Req 2) ---
+    // --- Search Modal Logic ---
     openSearchModal: () => {
         document.getElementById('searchModal').classList.remove('hidden');
         app.renderSearchList('');
@@ -298,7 +276,7 @@ const app = {
                 <span>${name}</span>
                 <small>${MOCK_FOOD_DB[name].calories} kcal</small>
             </div>
-        `).join('') : '<div class="text-muted" style="padding:10px">查無符合食物</div>';
+        `).join('') : '<div class="text-muted">查無符合食物</div>';
     },
 
     selectFoodFromSearch: (name) => {
@@ -309,7 +287,6 @@ const app = {
         
         app.updateNutritionPreview(name, 100);
         
-        // Re-bind listeners for manual adjustments
         document.getElementById('foodNameInput').onchange = (e) => app.updateNutritionPreview(e.target.value, document.getElementById('portionInput').value);
         document.getElementById('portionInput').oninput = (e) => app.updateNutritionPreview(document.getElementById('foodNameInput').value, e.target.value);
         
@@ -317,43 +294,54 @@ const app = {
         app.showToast(`已選取：${name}`, "success");
     },
 
-    // --- VLM & Nutrition Logic ---
+    // --- VLM & Nutrition Logic (CRUCIAL UPDATE) ---
     runMockVLM: () => {
-        app.setLoading(true, "上傳影像中...");
+        // 1. 檢查是否有圖片，若無則生成假圖片
+        const previewContainer = document.getElementById('previewContainer');
+        if (previewContainer.classList.contains('hidden')) {
+            app.showToast("未偵測到照片，正在生成模擬影像...", "warning");
+            // 使用 Data URI 生成一個簡單的 SVG Placeholder，不依賴外部圖片
+            const mockImageSrc = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22300%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20fill%3D%22%23eee%22%20width%3D%22400%22%20height%3D%22300%22%2F%3E%3Ctext%20fill%3D%22%23999%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20dy%3D%2210.5%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%3EAI%20Simulation%20Image%3C%2Ftext%3E%3C%2Fsvg%3E";
+            
+            document.getElementById('imagePreview').src = mockImageSrc;
+            previewContainer.classList.remove('hidden');
+            document.querySelector('.upload-placeholder').classList.add('hidden');
+        }
+
+        app.setLoading(true, "VLM 分析中...");
         const consoleEl = document.getElementById('vlmConsole');
-        consoleEl.innerHTML = "> Image uploaded.\n> Preprocessing: Resize 512x512, Norm.\n";
+        consoleEl.innerHTML = "> Input source detected.\n> Preprocessing: Resize 512x512, Norm.\n";
         
         setTimeout(() => {
-            app.setLoading(true, "VLM 模型分析中...");
             consoleEl.innerHTML += "> Model: NutriViT-L/14\n> Running Inference...\n";
             
             setTimeout(() => {
                 consoleEl.innerHTML += "> Detected: Food Object\n> Segmenting ingredients...\n> Success.";
                 app.setLoading(false);
                 
-                // Random mock result
-                const mockResult = VLM_MOCK_RESPONSES[Math.floor(Math.random() * VLM_MOCK_RESPONSES.length)];
+                // 2. 隨機從 DB 挑選一個食物作為結果
+                const foodKeys = Object.keys(MOCK_FOOD_DB).filter(k => k !== "未知食物");
+                const randomFood = foodKeys[Math.floor(Math.random() * foodKeys.length)];
                 
-                document.getElementById('vlmResultArea').classList.remove('hidden');
-                document.getElementById('foodNameInput').value = mockResult.name;
-                document.getElementById('portionInput').value = 100;
-                document.getElementById('confidenceBadge').innerText = `信心度: ${mockResult.confidence}%`;
-                
-                if (mockResult.confidence < 90) {
-                    document.getElementById('confidenceBadge').classList.add('text-danger');
-                    app.showToast("信心度較低，請檢查結果", "warning");
-                } else {
-                    document.getElementById('confidenceBadge').classList.remove('text-danger');
-                }
+                // 隨機信心度 85~99
+                const confidence = Math.floor(Math.random() * (99 - 85 + 1)) + 85;
 
-                app.updateNutritionPreview(mockResult.name, 100);
+                document.getElementById('vlmResultArea').classList.remove('hidden');
+                document.getElementById('foodNameInput').value = randomFood;
+                document.getElementById('portionInput').value = 100;
+                document.getElementById('confidenceBadge').innerText = `信心度: ${confidence}%`;
+                document.getElementById('confidenceBadge').classList.remove('text-danger');
                 
-                // Listeners for manual change
+                app.updateNutritionPreview(randomFood, 100);
+                
+                // 綁定輸入監聽
                 document.getElementById('foodNameInput').onchange = (e) => app.updateNutritionPreview(e.target.value, document.getElementById('portionInput').value);
                 document.getElementById('portionInput').oninput = (e) => app.updateNutritionPreview(document.getElementById('foodNameInput').value, e.target.value);
                 
-            }, 1000);
-        }, 800);
+                app.showToast("分析完成！", "success");
+
+            }, 1000); // 模擬推論時間
+        }, 800); // 模擬上傳/預處理時間
     },
 
     updateNutritionPreview: (foodName, portion) => {
@@ -440,7 +428,6 @@ const app = {
         u.diseases = Array.from(document.querySelectorAll('input[name="disease"]:checked')).map(cb => cb.value);
         u.dietary_restrictions = Array.from(document.querySelectorAll('input[name="diet"]:checked')).map(cb => cb.value);
 
-        // Simple TDEE Update
         u.tdee = Math.round(10 * u.weight + 6.25 * u.height - 5 * u.age + 5); 
 
         app.saveToStorage();
@@ -476,7 +463,6 @@ const app = {
         document.getElementById('dashCalorieVal').innerText = stats.calories;
         document.getElementById('dashCalorieTarget').innerText = `${target} kcal`;
         
-        // Recent 5 Logs (Global, sorted by date/time desc)
         const recentLogs = [...app.state.foodLogs].sort((a,b) => b.id - a.id).slice(0, 5);
         
         const list = document.getElementById('dashRecentLogs');
@@ -491,7 +477,6 @@ const app = {
         if (stats.sodium > 2300) risks.push("今日鈉攝取過高");
         if (stats.calories > target * 1.1) risks.push("熱量超標警告");
         
-        // Meds Risk Check
         const medRisks = app.checkAllInteractionsInternal();
         if(medRisks.length > 0) risks.push("偵測到潛在藥物風險");
 
@@ -547,7 +532,6 @@ const app = {
         const user = app.state.currentUser;
         const adviceBox = document.getElementById('adviceContent');
         
-        // Req 4: If no data, give default advice instead of "no data"
         if (stats.calories === 0 && !forceRefresh) {
              adviceBox.innerHTML = `
                 <p>👋 歡迎回來，${user.name}！今天還沒有飲食紀錄。</p>
@@ -586,7 +570,6 @@ const app = {
     renderTrends: () => {
         const days = 7;
         const dataPoints = [];
-        const labels = [];
         const today = new Date();
 
         for(let i=days-1; i>=0; i--) {
@@ -596,7 +579,6 @@ const app = {
             const logSum = app.state.foodLogs.filter(l => l.date === dateStr)
                               .reduce((acc, curr) => acc + curr.nutrients.calories, 0);
             dataPoints.push(logSum);
-            labels.push(i === 0 ? 'Today' : `${d.getMonth()+1}/${d.getDate()}`);
         }
 
         const maxVal = Math.max(...dataPoints, 3000);
@@ -695,7 +677,6 @@ const app = {
         const warnings = [];
         const meds = app.state.medications;
         
-        // Drug vs Drug
         for (let i = 0; i < meds.length; i++) {
             for (let j = i + 1; j < meds.length; j++) {
                 const d1 = meds[i].name;
@@ -728,5 +709,4 @@ const app = {
     }
 };
 
-// Start App
 window.addEventListener('DOMContentLoaded', app.init);
