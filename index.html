@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriAI 營養飲食 VLM 系統</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" class="icon"><path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" /></svg>
+            <span>NutriAI</span>
+        </div>
+        <div class="user-info" id="currentUserDisplay">訪客</div>
+    </header>
+
+    <div class="app-container">
+        <nav class="sidebar">
+            <button class="nav-btn active" data-target="dashboard">
+                <span class="icon-box">📊</span> 總覽 (Dashboard)
+            </button>
+            <button class="nav-btn" data-target="food-log">
+                <span class="icon-box">📷</span> 飲食紀錄 (Log)
+            </button>
+            <button class="nav-btn" data-target="analysis">
+                <span class="icon-box">📋</span> 營養報告 (Report)
+            </button>
+            <button class="nav-btn" data-target="advice">
+                <span class="icon-box">💡</span> 智能建議 (Advice)
+            </button>
+            <button class="nav-btn" data-target="medication">
+                <span class="icon-box">💊</span> 用藥管理 (Meds)
+            </button>
+            <button class="nav-btn" data-target="trends">
+                <span class="icon-box">📈</span> 趨勢分析 (Trends)
+            </button>
+            <button class="nav-btn" data-target="profile">
+                <span class="icon-box">👤</span> 個人檔案 (Profile)
+            </button>
+            <div class="sidebar-footer">
+                <button class="btn btn-danger-outline btn-sm" id="resetAllBtn">清除所有資料</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h2 id="pageTitle">今日概覽</h2>
+                <span class="breadcrumb" id="currentDate"></span>
+            </div>
+
+            <section id="view-dashboard" class="view active">
+                <div class="dashboard-grid">
+                    <div class="card summary-card">
+                        <h3>今日熱量</h3>
+                        <div class="progress-circle" id="dashCalorieCircle">
+                            <span id="dashCalorieVal">0</span>
+                            <small>kcal</small>
+                        </div>
+                        <p class="target-text">目標: <span id="dashCalorieTarget">--</span></p>
+                    </div>
+                    <div class="card summary-card">
+                        <h3>風險提醒</h3>
+                        <ul class="risk-list" id="dashRiskList">
+                            <li>暫無風險</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>最近飲食紀錄</h3>
+                    <div id="dashRecentLogs" class="list-group">
+                        </div>
+                </div>
+            </section>
+
+            <section id="view-food-log" class="view">
+                <div class="card">
+                    <h3><span class="step-num">1</span> 拍攝或上傳食物照片</h3>
+                    <div class="upload-area" id="dropZone">
+                        <input type="file" id="foodImageInput" accept="image/*" hidden>
+                        <div class="upload-placeholder" onclick="document.getElementById('foodImageInput').click()">
+                            <span class="icon-big">📷</span>
+                            <p>點擊拍攝或上傳照片</p>
+                        </div>
+                        <div id="previewContainer" class="hidden">
+                            <img id="imagePreview" src="" alt="Preview">
+                            <button class="btn btn-secondary btn-sm" id="reUploadBtn">重拍</button>
+                        </div>
+                    </div>
+                    <button id="startAnalysisBtn" class="btn btn-primary full-width" disabled>開始 VLM 分析</button>
+                </div>
+
+                <div id="vlmResultArea" class="hidden">
+                    <div class="card technical-card">
+                        <details>
+                            <summary>VLM 模型辨識詳情 (Technical View)</summary>
+                            <div class="log-console" id="vlmConsole">等待輸入...</div>
+                        </details>
+                    </div>
+
+                    <div class="card">
+                        <h3><span class="step-num">2</span> 分析結果與確認</h3>
+                        <div class="form-group">
+                            <label>食物名稱 (VLM 預測)</label>
+                            <input type="text" id="foodNameInput" class="form-input">
+                            <small class="confidence-badge" id="confidenceBadge">信心度: --%</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>偵測食材成分</label>
+                            <div id="ingredientsTags" class="tags-container"></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group col">
+                                <label>份量 (g)</label>
+                                <input type="number" id="portionInput" class="form-input">
+                            </div>
+                            <div class="form-group col">
+                                <label>餐別</label>
+                                <select id="mealTypeInput" class="form-input">
+                                    <option value="breakfast">早餐</option>
+                                    <option value="lunch">午餐</option>
+                                    <option value="dinner">晚餐</option>
+                                    <option value="snack">點心</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="nutrition-preview">
+                            <div>🔥 <span id="estCal">0</span> kcal</div>
+                            <div>🥩 <span id="estProt">0</span> P</div>
+                            <div>🍞 <span id="estCarb">0</span> C</div>
+                            <div>🥑 <span id="estFat">0</span> F</div>
+                        </div>
+
+                        <button id="saveFoodLogBtn" class="btn btn-success full-width">確認並儲存紀錄</button>
+                        <button id="manualSearchBtn" class="btn btn-text full-width">結果不正確？手動搜尋</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-profile" class="view">
+                <div class="card">
+                    <h3>切換 Demo 使用者</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-outline" onclick="app.loadDemoProfile(0)">一般健康</button>
+                        <button class="btn btn-outline" onclick="app.loadDemoProfile(1)">糖尿病/高血壓</button>
+                        <button class="btn btn-outline" onclick="app.loadDemoProfile(2)">健身增肌</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>基本資料</h3>
+                    <form id="profileForm">
+                        <div class="row">
+                            <div class="form-group col">
+                                <label>姓名</label>
+                                <input type="text" id="pName" class="form-input">
+                            </div>
+                            <div class="form-group col">
+                                <label>年齡</label>
+                                <input type="number" id="pAge" class="form-input">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group col">
+                                <label>身高 (cm)</label>
+                                <input type="number" id="pHeight" class="form-input">
+                            </div>
+                            <div class="form-group col">
+                                <label>體重 (kg)</label>
+                                <input type="number" id="pWeight" class="form-input">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>疾病史 (Use Case 2)</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="disease" value="diabetes"> 糖尿病</label>
+                                <label><input type="checkbox" name="disease" value="hypertension"> 高血壓</label>
+                                <label><input type="checkbox" name="disease" value="gout"> 痛風</label>
+                                <label><input type="checkbox" name="disease" value="kidney"> 腎臟病</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>飲食限制</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="diet" value="low_sugar"> 低糖</label>
+                                <label><input type="checkbox" name="diet" value="low_sodium"> 低鈉</label>
+                                <label><input type="checkbox" name="diet" value="high_protein"> 高蛋白</label>
+                                <label><input type="checkbox" name="diet" value="low_protein"> 低蛋白</label>
+                            </div>
+                        </div>
+
+                        <div class="stats-box">
+                            <p>BMI: <span id="displayBMI">--</span></p>
+                            <p>建議 TDEE: <span id="displayTDEE">--</span> kcal</p>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary full-width">儲存設定</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="view-analysis" class="view">
+                <div class="card">
+                    <div class="card-header-action">
+                        <h3>今日營養攝取</h3>
+                        <button class="btn btn-sm btn-outline" onclick="app.exportReport()">匯出 JSON</button>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="bar-chart-row">
+                            <span>熱量</span>
+                            <div class="progress-bg"><div class="progress-fill" id="barCal" style="width: 0%"></div></div>
+                            <span id="valCal">0/2000</span>
+                        </div>
+                        <div class="bar-chart-row">
+                            <span>碳水</span>
+                            <div class="progress-bg"><div class="progress-fill color-carb" id="barCarb" style="width: 0%"></div></div>
+                            <span id="valCarb">0g</span>
+                        </div>
+                        <div class="bar-chart-row">
+                            <span>蛋白質</span>
+                            <div class="progress-bg"><div class="progress-fill color-prot" id="barProt" style="width: 0%"></div></div>
+                            <span id="valProt">0g</span>
+                        </div>
+                        <div class="bar-chart-row">
+                            <span>脂肪</span>
+                            <div class="progress-bg"><div class="progress-fill color-fat" id="barFat" style="width: 0%"></div></div>
+                            <span id="valFat">0g</span>
+                        </div>
+                        <div class="bar-chart-row">
+                            <span>鈉</span>
+                            <div class="progress-bg"><div class="progress-fill color-sodium" id="barSodium" style="width: 0%"></div></div>
+                            <span id="valSodium">0mg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>今日紀錄明細</h3>
+                    <div id="reportLogList" class="list-group">
+                        </div>
+                </div>
+            </section>
+
+            <section id="view-advice" class="view">
+                <div class="card disclaimer-box">
+                    <strong>⚠️ 免責聲明：</strong> 本系統提供之建議僅供參考，不具醫療效力。
+                </div>
+                <div class="card">
+                    <h3>AI 醫療飲食建議</h3>
+                    <div id="adviceContent" class="advice-content">
+                        <p class="text-muted">請先記錄飲食以獲取建議。</p>
+                    </div>
+                    <button class="btn btn-outline full-width" onclick="app.generateAdvice()">🔄 重新生成建議</button>
+                </div>
+            </section>
+
+            <section id="view-trends" class="view">
+                <div class="card">
+                    <h3>過去 7 天熱量趨勢</h3>
+                    <div class="chart-wrapper">
+                        <svg id="trendChartSvg" viewBox="0 0 300 150" class="line-chart"></svg>
+                    </div>
+                    <div class="chart-labels">
+                        <small>7天前</small>
+                        <small>今日</small>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>違規/超標統計</h3>
+                    <ul id="trendStats" class="stat-list">
+                        <li>資料不足</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="view-medication" class="view">
+                <div class="card">
+                    <h3>新增用藥</h3>
+                    <div class="form-group">
+                        <label>藥品名稱</label>
+                        <input type="text" id="medNameInput" class="form-input" placeholder="例如: Warfarin">
+                    </div>
+                    <div class="form-group">
+                        <label>劑量與頻率</label>
+                        <input type="text" id="medDoseInput" class="form-input" placeholder="例如: 10mg, 每日一次">
+                    </div>
+                    <button class="btn btn-primary full-width" onclick="app.addMedication()">新增藥品</button>
+                </div>
+
+                <div class="card">
+                    <h3>目前用藥清單</h3>
+                    <div id="medList" class="list-group">
+                        </div>
+                </div>
+
+                <div class="card border-red">
+                    <h3>交互作用風險分析 (Interaction Check)</h3>
+                    <div id="interactionResults">
+                        <p class="text-success">目前未發現顯著風險。</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast hidden">訊息內容</div>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loadingText">處理中...</p>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
