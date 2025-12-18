@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NutriAI 營養飲食 VLM 系統</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
     <header class="app-header">
@@ -12,7 +12,10 @@
             <svg viewBox="0 0 24 24" class="icon"><path fill="currentColor" d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" /></svg>
             <span>NutriAI</span>
         </div>
-        <div class="user-info" id="currentUserDisplay">訪客</div>
+        <div class="user-info">
+            <span id="currentUserDisplay">載入中...</span>
+            <small id="currentDate" class="text-muted" style="margin-left: 10px; font-size: 0.8em;"></small>
+        </div>
     </header>
 
     <div class="app-container">
@@ -39,21 +42,20 @@
                 <span class="icon-box">👤</span> 個人檔案 (Profile)
             </button>
             <div class="sidebar-footer">
-                <button class="btn btn-danger-outline btn-sm" id="resetAllBtn">清除所有資料</button>
+                <button class="btn btn-danger-outline btn-sm full-width" id="resetAllBtn">重置 Demo 資料</button>
             </div>
         </nav>
 
         <main class="main-content">
             <div class="page-header">
                 <h2 id="pageTitle">今日概覽</h2>
-                <span class="breadcrumb" id="currentDate"></span>
             </div>
 
             <section id="view-dashboard" class="view active">
                 <div class="dashboard-grid">
                     <div class="card summary-card">
                         <h3>今日熱量</h3>
-                        <div class="progress-circle" id="dashCalorieCircle">
+                        <div class="progress-circle">
                             <span id="dashCalorieVal">0</span>
                             <small>kcal</small>
                         </div>
@@ -62,7 +64,7 @@
                     <div class="card summary-card">
                         <h3>風險提醒</h3>
                         <ul class="risk-list" id="dashRiskList">
-                            <li>暫無風險</li>
+                            <li>計算中...</li>
                         </ul>
                     </div>
                 </div>
@@ -71,6 +73,9 @@
                     <h3>最近飲食紀錄</h3>
                     <div id="dashRecentLogs" class="list-group">
                         </div>
+                    <div class="card-footer-action">
+                        <button class="btn btn-primary btn-sm" onclick="app.switchView('food-log')">新增紀錄</button>
+                    </div>
                 </div>
             </section>
 
@@ -79,9 +84,9 @@
                     <h3><span class="step-num">1</span> 拍攝或上傳食物照片</h3>
                     <div class="upload-area" id="dropZone">
                         <input type="file" id="foodImageInput" accept="image/*" hidden>
-                        <div class="upload-placeholder" onclick="document.getElementById('foodImageInput').click()">
+                        <div class="upload-placeholder">
                             <span class="icon-big">📷</span>
-                            <p>點擊拍攝或上傳照片</p>
+                            <p>點擊拍攝、上傳或拖放照片至此</p>
                         </div>
                         <div id="previewContainer" class="hidden">
                             <img id="imagePreview" src="" alt="Preview">
@@ -115,7 +120,7 @@
                         <div class="row">
                             <div class="form-group col">
                                 <label>份量 (g)</label>
-                                <input type="number" id="portionInput" class="form-input">
+                                <input type="number" id="portionInput" class="form-input" value="100">
                             </div>
                             <div class="form-group col">
                                 <label>餐別</label>
@@ -129,14 +134,14 @@
                         </div>
 
                         <div class="nutrition-preview">
-                            <div>🔥 <span id="estCal">0</span> kcal</div>
-                            <div>🥩 <span id="estProt">0</span> P</div>
-                            <div>🍞 <span id="estCarb">0</span> C</div>
-                            <div>🥑 <span id="estFat">0</span> F</div>
+                            <div>🔥 <span id="estCal">0</span></div>
+                            <div>🥩 <span id="estProt">0</span></div>
+                            <div>🍞 <span id="estCarb">0</span></div>
+                            <div>🥑 <span id="estFat">0</span></div>
                         </div>
 
                         <button id="saveFoodLogBtn" class="btn btn-success full-width">確認並儲存紀錄</button>
-                        <button id="manualSearchBtn" class="btn btn-text full-width">結果不正確？手動搜尋</button>
+                        <button id="manualSearchBtn" class="btn btn-text full-width" style="margin-top: 10px;">結果不正確？搜尋食物資料庫</button>
                     </div>
                 </div>
             </section>
@@ -146,8 +151,8 @@
                     <h3>切換 Demo 使用者</h3>
                     <div class="btn-group">
                         <button class="btn btn-outline" onclick="app.loadDemoProfile(0)">一般健康</button>
-                        <button class="btn btn-outline" onclick="app.loadDemoProfile(1)">糖尿病/高血壓</button>
-                        <button class="btn btn-outline" onclick="app.loadDemoProfile(2)">健身增肌</button>
+                        <button class="btn btn-outline" onclick="app.loadDemoProfile(1)">慢性病患</button>
+                        <button class="btn btn-outline" onclick="app.loadDemoProfile(2)">健身族群</button>
                     </div>
                 </div>
 
@@ -176,7 +181,7 @@
                         </div>
                         
                         <div class="form-group">
-                            <label>疾病史 (Use Case 2)</label>
+                            <label>疾病史</label>
                             <div class="checkbox-group">
                                 <label><input type="checkbox" name="disease" value="diabetes"> 糖尿病</label>
                                 <label><input type="checkbox" name="disease" value="hypertension"> 高血壓</label>
@@ -216,7 +221,7 @@
                         <div class="bar-chart-row">
                             <span>熱量</span>
                             <div class="progress-bg"><div class="progress-fill" id="barCal" style="width: 0%"></div></div>
-                            <span id="valCal">0/2000</span>
+                            <span id="valCal">0</span>
                         </div>
                         <div class="bar-chart-row">
                             <span>碳水</span>
@@ -255,9 +260,8 @@
                 <div class="card">
                     <h3>AI 醫療飲食建議</h3>
                     <div id="adviceContent" class="advice-content">
-                        <p class="text-muted">請先記錄飲食以獲取建議。</p>
-                    </div>
-                    <button class="btn btn-outline full-width" onclick="app.generateAdvice()">🔄 重新生成建議</button>
+                        </div>
+                    <button class="btn btn-outline full-width" style="margin-top: 15px;" onclick="app.generateAdvice(true)">🔄 重新生成建議</button>
                 </div>
             </section>
 
@@ -275,7 +279,7 @@
                 <div class="card">
                     <h3>違規/超標統計</h3>
                     <ul id="trendStats" class="stat-list">
-                        <li>資料不足</li>
+                        <li>資料計算中...</li>
                     </ul>
                 </div>
             </section>
@@ -300,14 +304,28 @@
                         </div>
                 </div>
 
-                <div class="card border-red">
-                    <h3>交互作用風險分析 (Interaction Check)</h3>
+                <div class="card" id="interactionCard">
+                    <h3>交互作用風險分析</h3>
                     <div id="interactionResults">
                         <p class="text-success">目前未發現顯著風險。</p>
                     </div>
                 </div>
             </section>
         </main>
+    </div>
+
+    <div id="searchModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>搜尋食物資料庫</h3>
+                <button class="close-btn" onclick="app.closeSearchModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="modalSearchInput" class="form-input" placeholder="輸入食物名稱 (如: 雞腿, 蘋果...)">
+                <div id="modalSearchResults" class="list-group scrollable-list">
+                    </div>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast hidden">訊息內容</div>
@@ -317,7 +335,7 @@
         <p id="loadingText">處理中...</p>
     </div>
 
-    <script src="data.js"></script>
-    <script src="app.js"></script>
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
 </body>
 </html>
